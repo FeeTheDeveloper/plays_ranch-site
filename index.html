@@ -394,7 +394,7 @@
             </div>
           </div>
 
-          <form class="contact-form" id="contact-form" data-reveal="scale">
+          <form class="contact-form" id="contact-form" data-reveal="scale" novalidate>
             <div class="contact-form__heading">
               <span class="contact-form__eyebrow">Start the conversation</span>
               <strong>Request a strategy call</strong>
@@ -403,23 +403,30 @@
 
             <label class="form-field">
               <span>Name</span>
-              <input type="text" name="name" autocomplete="name" placeholder="Your name" required>
+              <input type="text" name="name" autocomplete="name" placeholder="Your name" minlength="2" maxlength="120" required>
             </label>
 
             <label class="form-field">
               <span>Email</span>
-              <input type="email" name="email" autocomplete="email" placeholder="you@company.com" required>
+              <input type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@company.com" maxlength="160" required>
             </label>
 
             <label class="form-field">
               <span>Company</span>
-              <input type="text" name="company" autocomplete="organization" placeholder="Company name">
+              <input type="text" name="company" autocomplete="organization" placeholder="Company name" maxlength="160">
             </label>
 
             <label class="form-field">
               <span>What needs to improve?</span>
-              <textarea name="message" rows="5" placeholder="Tell us where operations, automation, or visibility need to improve." required></textarea>
+              <textarea name="message" rows="5" minlength="20" maxlength="2500" placeholder="Tell us where operations, automation, or visibility need to improve." required></textarea>
             </label>
+
+            <label class="form-field form-field--honeypot" aria-hidden="true">
+              <span>Website</span>
+              <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </label>
+
+            <input type="hidden" name="submittedAt" id="contact-form-submitted-at">
 
             <button class="button button--primary contact-form__submit" type="submit">Send Request</button>
             <p class="contact-form__status" id="contact-form-status" aria-live="polite"></p>

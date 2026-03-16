@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const handleContactRequest = require("./api/contact");
 
 const port = 4173;
 const root = __dirname;
@@ -18,6 +19,15 @@ const contentTypes = {
 
 const server = http.createServer((request, response) => {
   const requestPath = decodeURIComponent((request.url || "/").split("?")[0]);
+
+  if (requestPath === "/api/contact") {
+    Promise.resolve(handleContactRequest(request, response)).catch(() => {
+      response.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Server Error" }));
+    });
+    return;
+  }
+
   const normalized = requestPath === "/" ? "index.html" : requestPath.replace(/^\/+/, "");
   let filePath = path.join(root, normalized);
 

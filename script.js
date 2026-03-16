@@ -30,6 +30,7 @@ const heroStage = document.getElementById("hero-stage");
 const heroEmblem = document.getElementById("hero-emblem");
 const contactForm = document.getElementById("contact-form");
 const contactStatus = document.getElementById("contact-form-status");
+const submittedAtField = document.getElementById("contact-form-submitted-at");
 
 if (heroStage && !prefersReducedMotion) {
   const state = {
@@ -80,34 +81,112 @@ if (heroStage && !prefersReducedMotion) {
 if (contactForm && contactStatus) {
   const submitButton = contactForm.querySelector(".contact-form__submit");
   const defaultButtonLabel = submitButton ? submitButton.textContent : "";
+  const emailField = contactForm.querySelector('input[name="email"]');
+  let isSubmitting = false;
+  let lastSubmitAt = 0;
+
+  const setStatus = (message, tone) => {
+    contactStatus.textContent = message;
+    contactStatus.classList.remove("is-success", "is-error");
+
+    if (tone) {
+      contactStatus.classList.add(tone);
+    }
+
+    contactStatus.classList.toggle("is-visible", Boolean(message));
+  };
+
+  const resetSubmittedAt = () => {
+    if (submittedAtField) {
+      submittedAtField.value = String(Date.now());
+    }
+  };
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (emailField) {
+    emailField.addEventListener("input", () => {
+      emailField.setCustomValidity("");
+    });
+  }
+
+  resetSubmittedAt();
 
   contactForm.addEventListener("submit", (event) => {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    if (Date.now() - lastSubmitAt < 2500) {
+      setStatus("Please wait a moment before submitting again.", "is-error");
+      return;
+    }
+
+    if (emailField && !emailPattern.test(emailField.value.trim())) {
+      emailField.setCustomValidity("Enter a valid email address.");
+    }
 
     if (!contactForm.reportValidity()) {
       return;
     }
 
-    contactForm.classList.remove("is-success");
-    void contactForm.offsetWidth;
-    contactForm.classList.add("is-success");
+    const formData = new FormData(contactForm);
+    const payload = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      company: formData.get("company"),
+      message: formData.get("message"),
+      website: formData.get("website"),
+      submittedAt: formData.get("submittedAt"),
+    };
 
-    contactStatus.textContent = "Request received. PRP will follow up with next steps.";
-    contactStatus.classList.add("is-visible", "is-success");
+    isSubmitting = true;
+    lastSubmitAt = Date.now();
+    setStatus("Sending your request...", "");
+    contactForm.classList.remove("is-success");
+    contactForm.classList.add("is-loading");
 
     if (submitButton) {
       submitButton.disabled = true;
-      submitButton.textContent = "Request Sent";
+      submitButton.textContent = "Sending...";
     }
 
-    window.setTimeout(() => {
-      contactForm.reset();
+    fetch("/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
 
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = defaultButtonLabel;
-      }
-    }, 1200);
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to send your request right now.");
+        }
+
+        contactForm.classList.remove("is-loading");
+        contactForm.classList.remove("is-success");
+        void contactForm.offsetWidth;
+        contactForm.classList.add("is-success");
+        setStatus("Request delivered. PRP will follow up with next steps.", "is-success");
+        contactForm.reset();
+        resetSubmittedAt();
+      })
+      .catch((error) => {
+        contactForm.classList.remove("is-loading");
+        setStatus(error.message || "Something went wrong. Please try again.", "is-error");
+      })
+      .finally(() => {
+        isSubmitting = false;
+
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = defaultButtonLabel;
+        }
+      });
   });
 }
 

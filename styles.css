@@ -1656,6 +1656,19 @@ h3 {
     0 16px 34px rgba(0, 0, 0, 0.2);
 }
 
+.form-field--honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
 .contact-form__submit {
   z-index: 1;
   width: 100%;
@@ -1682,6 +1695,14 @@ h3 {
 .contact-form__submit:disabled {
   cursor: default;
   transform: none;
+  opacity: 0.88;
+}
+
+.contact-form.is-loading .contact-form__submit {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 18px 42px rgba(214, 168, 86, 0.18),
+    0 0 18px rgba(240, 204, 133, 0.1);
 }
 
 .contact-form.is-success {
@@ -1714,6 +1735,10 @@ h3 {
 
 .contact-form__status.is-success {
   color: var(--gold-bright);
+}
+
+.contact-form__status.is-error {
+  color: #ffb3b3;
 }
 
 .site-footer {
