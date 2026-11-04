@@ -4,9 +4,11 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { JwtVerifier } from "../src/auth/verifier.js";
-import { createApp } from "../src/http.js";
+import { createFetchHandler } from "../src/http.js";
+import { toNodeHandler } from "../src/node-adapter.js";
 import { silentLogger, type Logger } from "../src/log.js";
-import { loadDataset, MemoryRegistryStore } from "../src/store/memory.js";
+import { loadDataset } from "../src/store/dataset-file.js";
+import { MemoryRegistryStore } from "../src/store/memory.js";
 import type { RegistryStore } from "../src/store/store.js";
 
 export const ISSUER = "https://auth.test.example";
@@ -67,7 +69,10 @@ export interface Harness {
   client(token: string): Promise<Client>;
 }
 
-export async function startHarness(store?: RegistryStore): Promise<Harness> {
+export async function startHarness(
+  store?: RegistryStore,
+  opts: { requiredScope?: string | null } = {},
+): Promise<Harness> {
   const keys = await makeKeys();
   const registry = store ?? new MemoryRegistryStore(await loadDataset(FIXTURE), "fixture");
   const logs: Harness["logs"] = [];
@@ -80,18 +85,19 @@ export async function startHarness(store?: RegistryStore): Promise<Harness> {
   const baseUrl = `http://127.0.0.1:${port}`;
   const resourceUrl = `${baseUrl}/mcp`;
 
-  const handler = createApp({
+  const handler = createFetchHandler({
     resourceUrl,
     issuer: ISSUER,
-    requiredScope: SCOPE,
-    scopesSupported: [SCOPE],
+    requiredScope: opts.requiredScope === undefined ? SCOPE : opts.requiredScope,
+    scopesSupported: opts.requiredScope === null ? [] : [SCOPE],
     serviceVersion: "test",
     verifier: new JwtVerifier({ issuer: ISSUER, audience: resourceUrl }, createLocalJWKSet(keys.jwks)),
-    store: registry,
+    openStore: () => registry,
     logger: logger ?? silentLogger,
   });
+  const nodeHandler = toNodeHandler(handler, baseUrl);
   server.on("request", (req, res) => {
-    void handler(req, res);
+    void nodeHandler(req, res);
   });
 
   const clients: Client[] = [];

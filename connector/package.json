@@ -1,15 +1,20 @@
 {
   "name": "plays-ranch-mcp-connector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plays Ranch MCP Connector v1 — private, read-only registry tools for ChatGPT custom connectors.",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json",
     "test": "node --import tsx --test test/*.test.ts",
     "start": "node dist/server.js",
     "dev": "node --import tsx src/server.ts",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "worker:dev": "wrangler dev --local",
+    "worker:bundle": "wrangler deploy --dry-run --outdir .wrangler-bundle",
+    "worker:smoke": "node scripts/workerd-smoke.mjs",
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production"
   },
   "license": "UNLICENSED",
   "dependencies": {
@@ -19,10 +24,12 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
-    "tsx": "^4.20.0",
+    "@cloudflare/workers-types": "^5.20261104.1",
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.15.0"
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.157.0"
   },
   "private": true,
   "type": "module",

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import pg from "pg";
-import { loadDataset } from "../src/store/memory.js";
+import { loadDataset } from "../src/store/dataset-file.js";
 import { escapeLike, PostgresRegistryStore } from "../src/store/postgres.js";
 import { FIXTURE, IDS, startHarness, structured, errorText, type Harness } from "./helpers.js";
 

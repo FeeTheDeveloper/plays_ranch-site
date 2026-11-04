@@ -1,0 +1,20 @@
+# Local-only smoke config: Worker + Hyperdrive binding against a local Postgres. Not deployed.
+name = "plays-ranch-mcp-pg-smoke"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NODE_ENV = "development"
+SERVICE_VERSION = "smoke"
+MCP_RESOURCE_URL = "http://127.0.0.1:8792/mcp"
+OAUTH_MODE = "jwt"
+OAUTH_ISSUER = "https://issuer.local.test"
+OAUTH_JWKS_URL = "http://127.0.0.1:8793/jwks"
+OAUTH_REQUIRED_SCOPE = "none"
+REGISTRY_SOURCE = "postgres"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "00000000000000000000000000000000"
+localConnectionString = "postgres://plays_ranch_connector:local-test-only@127.0.0.1:55432/registry_test"

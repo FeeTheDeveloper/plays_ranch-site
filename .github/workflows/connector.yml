@@ -2,10 +2,10 @@ name: connector
 
 on:
   pull_request:
-    paths: ["connector/**", ".github/workflows/connector.yml"]
+    paths: ["connector/**", ".github/workflows/connector*.yml"]
   push:
     branches: [main]
-    paths: ["connector/**", ".github/workflows/connector.yml"]
+    paths: ["connector/**", ".github/workflows/connector*.yml"]
 
 permissions:
   contents: read
@@ -39,4 +39,6 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/registry_test
       - run: npm run build
+      - name: Bundle Cloudflare Worker (no deploy)
+        run: npm run worker:bundle
       - run: npm audit --omit=dev --audit-level=high
