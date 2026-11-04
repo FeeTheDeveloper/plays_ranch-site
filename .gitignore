@@ -1,0 +1,4 @@
+# Local environment files: never commit, never serve from public/
+.env
+.env.*
+!.env.example
