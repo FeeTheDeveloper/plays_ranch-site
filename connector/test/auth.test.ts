@@ -126,3 +126,41 @@ describe("OAuth resource server", () => {
     assert.equal((await fetch(`${h.baseUrl}/admin`)).status, 404);
   });
 });
+
+describe("audience-only mode (OAUTH_REQUIRED_SCOPE=none)", () => {
+  let h: Harness;
+  before(async () => {
+    h = await startHarness(undefined, { requiredScope: null });
+  });
+  after(() => h.close());
+
+  it("accepts a token with no custom scope when bound to this resource", async () => {
+    assert.equal((await post(h, await h.token({ scope: "profile email" }))).status, 200);
+  });
+
+  it("still rejects a token for another audience", async () => {
+    assert.equal((await post(h, await h.token({ aud: "https://other.example/mcp", scope: "" }))).status, 401);
+  });
+
+  it("advertises no scopes in resource metadata", async () => {
+    const body = await (await fetch(`${h.baseUrl}/.well-known/oauth-protected-resource/mcp`)).json();
+    assert.deepEqual(body.scopes_supported, []);
+  });
+});
+
+describe("request limits", () => {
+  let h: Harness;
+  before(async () => {
+    h = await startHarness();
+  });
+  after(() => h.close());
+
+  it("rejects bodies over 1 MB with 413", async () => {
+    const res = await fetch(h.resourceUrl, {
+      method: "POST",
+      headers: { authorization: `Bearer ${await h.token()}`, "content-type": "application/json" },
+      body: JSON.stringify({ pad: "x".repeat(1_100_000) }),
+    });
+    assert.equal(res.status, 413);
+  });
+});

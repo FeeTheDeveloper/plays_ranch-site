@@ -20,7 +20,8 @@ export interface Config {
     introspectionClientId?: string;
     introspectionClientSecret?: string;
     allowMissingAudience?: boolean;
-    requiredScope: string;
+    /** null = audience binding only (OAUTH_REQUIRED_SCOPE=none), for servers without custom scopes. */
+    requiredScope: string | null;
     scopesSupported: string[];
   };
   registry: {
@@ -34,18 +35,20 @@ export interface Config {
 
 export class ConfigError extends Error {}
 
-function req(env: NodeJS.ProcessEnv, name: string): string {
+function req(env: Env, name: string): string {
   const v = env[name]?.trim();
   if (!v) throw new ConfigError(`Missing required environment variable ${name}`);
   return v;
 }
 
-function opt(env: NodeJS.ProcessEnv, name: string): string | undefined {
+function opt(env: Env, name: string): string | undefined {
   const v = env[name]?.trim();
   return v ? v : undefined;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+export type Env = Record<string, string | undefined>;
+
+export function loadConfig(env: Env): Config {
   const production = env.NODE_ENV === "production";
   const resourceUrl = req(env, "MCP_RESOURCE_URL");
   const parsedResource = new URL(resourceUrl);
@@ -58,14 +61,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError(`OAUTH_MODE must be "jwt" or "introspection", got "${mode}"`);
   }
   const issuer = req(env, "OAUTH_ISSUER");
-  const requiredScope = opt(env, "OAUTH_REQUIRED_SCOPE") ?? "registry:read";
+  const scopeSetting = opt(env, "OAUTH_REQUIRED_SCOPE") ?? "registry:read";
+  const requiredScope = scopeSetting === "none" ? null : scopeSetting;
 
   const auth: Config["auth"] = {
     mode,
     issuer,
     audience: opt(env, "OAUTH_AUDIENCE") ?? resourceUrl,
     requiredScope,
-    scopesSupported: [requiredScope],
+    scopesSupported: requiredScope ? [requiredScope] : [],
   };
   if (mode === "jwt") {
     auth.jwksUrl = req(env, "OAUTH_JWKS_URL");

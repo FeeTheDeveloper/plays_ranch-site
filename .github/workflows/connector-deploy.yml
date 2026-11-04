@@ -1,0 +1,47 @@
+name: connector-deploy
+
+# Manual deploy of the MCP connector to Cloudflare Workers.
+# Requires repository secrets CLOUDFLARE_API_TOKEN (Workers Scripts:Edit) and CLOUDFLARE_ACCOUNT_ID.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "staging (workers.dev, demo fixture) or production (Supabase via Hyperdrive)"
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connector-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: connector-${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: connector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: connector/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            npm run deploy:production
+          else
+            npm run deploy:staging
+          fi

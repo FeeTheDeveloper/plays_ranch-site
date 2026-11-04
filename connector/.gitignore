@@ -3,4 +3,6 @@ dist/
 .env
 .env.*
 !.env.example
-.vercel/
+.wrangler/
+.wrangler-bundle/
+.dev.vars

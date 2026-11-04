@@ -21,6 +21,12 @@ describe("config", () => {
     assert.equal(c.port, 8787);
   });
 
+  it("supports audience-only mode with OAUTH_REQUIRED_SCOPE=none", () => {
+    const c = loadConfig({ ...BASE, OAUTH_REQUIRED_SCOPE: "none" });
+    assert.equal(c.auth.requiredScope, null);
+    assert.deepEqual(c.auth.scopesSupported, []);
+  });
+
   it("requires https for the resource URL in production", () => {
     assert.throws(
       () => loadConfig({ ...BASE, NODE_ENV: "production", MCP_RESOURCE_URL: "http://mcp.example.com/mcp" }),

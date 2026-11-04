@@ -9,7 +9,7 @@
 | Company | Plays Ranch |
 | Repository / branch | `feethedeveloper/plays_ranch-site` / `feat/mcp-connector-v1` |
 | Service path | `connector/` (separate deployable service; the public site is unchanged) |
-| Status | REVIEW: built and tested locally. Not deployed. OAuth not provisioned. |
+| Status | ACCEPTED: stack approved (Clerk, Cloudflare Workers, Supabase). Code is Workers-ready. Deploy is blocked on Cloudflare deploy credentials and a Supabase organization. See [mcp-connector-runbook.md](mcp-connector-runbook.md). |
 | Current owner | Claude (implementation) |
 | Next owner | King Fee (decisions below), then Claude (deploy and connect) |
 
@@ -19,8 +19,8 @@ Give ChatGPT a private, authenticated, read-only MCP connector so that Plays Ran
 
 ## Current verified condition
 
-- **Built:** MCP server (Streamable HTTP, stateless), the 5 read-only tools, an OAuth resource server (JWT/JWKS or RFC 7662 introspection), RFC 9728 metadata, a Postgres registry schema with a read-only role and RLS, a labeled demo fixture, CI workflow, and a Vercel entry.
-- **Verified locally:** 57 tests passed on Node 22. That includes the Postgres suite run against a real Postgres 16, connected as the read-only role. The production build compiled. The compiled server answered `/healthz`, the metadata endpoint and the 401 challenge. The Vercel entry was run under a plain Node server.
+- **Built:** MCP server (Streamable HTTP, stateless), the 5 read-only tools, an OAuth resource server (JWT/JWKS or RFC 7662 introspection), RFC 9728 metadata, a Postgres registry schema with a read-only role and RLS, a labeled demo fixture, CI and deploy workflows, and a Cloudflare Workers entry with a Hyperdrive binding.
+- **Verified locally:** 64 tests passed on Node 22, including the Postgres suite against a real Postgres 16 connected as the read-only role. The Worker bundle is 299 KiB gzipped. In the Workers runtime (`wrangler dev`), the 10-check smoke test passed against the demo fixture, and again against Postgres through a local Hyperdrive binding (`data_status: live`).
 - **Not done:** no hosting project, domain, authorization server, production database or ChatGPT connection exists yet. There are no real Plays Ranch records; the fixture is demo data and is labeled as such.
 
 ## Tool contracts (v1)
@@ -50,13 +50,18 @@ A record from another company produces the same response as a record that does n
 - It publishes `/.well-known/oauth-protected-resource/mcp` with `authorization_servers = [OAUTH_ISSUER]` and `scopes_supported = [registry:read]`.
 - It enforces issuer, audience = `MCP_RESOURCE_URL`, expiry, `sub`, and the `registry:read` scope. Responses are 401 for an invalid token and 403 for a missing scope, each with a `WWW-Authenticate: Bearer resource_metadata=...` header.
 - The user's `sub` is mapped to companies through `company_memberships`. Users with no membership see nothing.
-- **Authorization server (decision needed):** proposed Clerk, which is already in the FTD stack. It must support authorization code + PKCE S256, the `resource` parameter or audience binding, and a client-registration method ChatGPT accepts (Dynamic Client Registration and/or Client ID Metadata Documents). Secondary sources disagree on which of those ChatGPT currently requires, so **confirm against OpenAI's current developer docs before provisioning.**
+- **Authorization server (approved: Clerk).** The Plays Ranch Clerk app (`app_3LcccFakdXkx1gWH479K6r0Y0af`) is separate from Hutchrok's. Its development issuer is `https://up-beagle-9921.clerk.accounts.dev`.
+- Clerk's `configure_mcp_server` turns on the audience claim and Client ID Metadata Document registration. PKCE is already required. JWT access tokens must be enabled in the Clerk Dashboard; the connector then verifies them against Clerk's JWKS and needs no secrets.
+- Clerk issues standard OAuth scopes only, so the connector runs with `OAUTH_REQUIRED_SCOPE=none`. Access is enforced by audience binding to the connector URL plus server-side company memberships.
+- Open item: confirm in ChatGPT that its connector registers through CIMD. If it needs Dynamic Client Registration instead, enable DCR in Clerk.
 
-## Hosting target
+## Hosting target (approved: Cloudflare Workers)
 
-- **Proposed:** a separate Vercel project with Root Directory `connector/`, on a dedicated subdomain (for example `mcp.<plays-ranch-domain>`), with `MCP_RESOURCE_URL=https://mcp.<domain>/mcp`.
-- The service is kept separate from the marketing site. The site stays static and exposes no control-plane data.
-- Rollback: redeploy the previous Vercel deployment, or disable the connector in ChatGPT. The database migration only adds objects.
+- **Staging:** Worker `plays-ranch-mcp` on workers.dev, serving the bundled demo fixture (labeled `fixture`). It is used to prove the ChatGPT + Clerk flow before the registry exists.
+- **Production:** Worker `plays-ranch-mcp-production` on a custom domain (for example `mcp.<plays-ranch-domain>`). It reads Supabase Postgres through a **Hyperdrive** binding, with one connection per request.
+- Config lives in `connector/wrangler.toml`. Deploys run from the manual `connector-deploy` GitHub workflow, which uses the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets.
+- The connector stays separate from the marketing site. The site remains static and exposes no control-plane data.
+- Rollback: `wrangler rollback`, or disable the connector in ChatGPT. The migration only adds objects.
 
 ## Environment variables
 
@@ -94,13 +99,17 @@ Skill instructions should name these tools exactly. They should also report `met
 
 The deployment URL and commit SHA. `/healthz` output. Metadata JSON. Screenshots of the ChatGPT connector setup and a tool call for each test user. Log excerpts showing `tool_call` events (these contain no tokens).
 
-## Decisions needed from King Fee
+## Decisions
 
-1. Approve **Clerk** (or name another provider) as the Plays Ranch authorization server.
-2. Approve **Vercel** as the host, plus the connector **subdomain**.
-3. Approve a **Plays Ranch Supabase project** as the registry database, and name who loads the first real records.
-4. Name the initial **company memberships**: which user identities can read which companies.
-5. Decide whether the connector should **move to its own repository**. It currently lives in `connector/`, inside this repo, as a separate deployable unit.
+| # | Decision | Status |
+|---|---|---|
+| 1 | Authorization server | **Clerk**: approved 2026-11-04 |
+| 2 | Hosting | **Cloudflare Workers**: approved 2026-11-04 |
+| 3 | Registry database | **Supabase**: approved 2026-11-04. Needs an organization on the connected account. |
+| 4 | Initial company memberships | Open |
+| 5 | Production domain for the connector | Open |
+| 6 | Clerk sign-up mode (public vs restricted) for a private connector | Open (recommend restricted) |
+| 7 | Own repository for the connector | Open (currently `connector/` in this repo) |
 
 ## Next release (v2, not built)
 
@@ -111,4 +120,6 @@ The deployment URL and commit SHA. `/healthz` output. Metadata JSON. Screenshots
 - 2026-11-04: Connector built inside this repo as `connector/`, a separate service, because creating a new repository needs approval.
 - 2026-11-04: Stateless Streamable HTTP chosen. No session state, and horizontal scaling is safe.
 - 2026-11-04: Resource server is provider-neutral (JWKS or introspection), so the authorization server choice stays open.
+- 2026-11-04: King Fee approved Clerk, Cloudflare and Supabase. The Vercel target was removed. The HTTP layer was rewritten to the web-standard Fetch API so one handler serves Workers and Node.
+- 2026-11-04: Plays Ranch Clerk application created (development instance) to keep it separate from Hutchrok's Clerk app.
 - 2026-11-04: Node's built-in test runner used. vitest 4 failed to install under npm 10 (arborist peer-set bug).

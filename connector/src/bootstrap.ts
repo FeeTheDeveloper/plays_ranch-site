@@ -1,9 +1,10 @@
 import { resolve } from "node:path";
-import { loadConfig, type Config } from "./config.js";
+import { loadConfig, type Config, type Env } from "./config.js";
 import { createVerifier } from "./auth/verifier.js";
-import { createApp } from "./http.js";
+import { createFetchHandler } from "./http.js";
 import { jsonLogger, type Logger } from "./log.js";
-import { loadDataset, MemoryRegistryStore } from "./store/memory.js";
+import { loadDataset } from "./store/dataset-file.js";
+import { MemoryRegistryStore } from "./store/memory.js";
 import { PostgresRegistryStore } from "./store/postgres.js";
 import type { RegistryStore } from "./store/store.js";
 
@@ -15,18 +16,18 @@ export async function createStore(config: Config): Promise<RegistryStore> {
   return new MemoryRegistryStore(dataset, "fixture");
 }
 
-/** Build the request handler from environment. Shared by the Node server and the Vercel function. */
-export async function bootstrap(env: NodeJS.ProcessEnv = process.env, logger: Logger = jsonLogger) {
+/** Node runtime: one shared store (connection pool) for the process lifetime. */
+export async function bootstrap(env: Env = process.env, logger: Logger = jsonLogger) {
   const config = loadConfig(env);
   const store = await createStore(config);
-  const handler = createApp({
+  const handler = createFetchHandler({
     resourceUrl: config.resourceUrl,
     issuer: config.auth.issuer,
     requiredScope: config.auth.requiredScope,
     scopesSupported: config.auth.scopesSupported,
     serviceVersion: config.serviceVersion,
     verifier: createVerifier(config),
-    store,
+    openStore: () => store,
     logger,
   });
   logger("info", "connector_configured", {

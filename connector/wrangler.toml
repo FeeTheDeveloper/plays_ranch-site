@@ -1,0 +1,51 @@
+# Plays Ranch MCP Connector — Cloudflare Workers configuration.
+# Secrets (if any) are set with `wrangler secret put`, never in this file.
+# JWT mode needs no secrets: the Worker only reads Clerk's public JWKS.
+
+name = "plays-ranch-mcp"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[observability]
+enabled = true
+
+# --- Default environment: staging on workers.dev, labeled demo fixture data ---------
+# Used to prove the ChatGPT + Clerk flow before the Supabase registry exists.
+[vars]
+NODE_ENV = "production"
+SERVICE_VERSION = "0.2.0"
+MCP_RESOURCE_URL = "https://plays-ranch-mcp.REPLACE_WITH_ACCOUNT_SUBDOMAIN.workers.dev/mcp"
+OAUTH_MODE = "jwt"
+OAUTH_ISSUER = "https://up-beagle-9921.clerk.accounts.dev"
+OAUTH_JWKS_URL = "https://up-beagle-9921.clerk.accounts.dev/.well-known/jwks.json"
+# Clerk OAuth issues standard scopes only; enforcement is audience binding + memberships.
+OAUTH_REQUIRED_SCOPE = "none"
+REGISTRY_SOURCE = "fixture"
+ALLOW_FIXTURE_IN_PRODUCTION = "true"
+# Comma-separated Clerk user ids (user_...) granted the demo company. Fixture mode only.
+DEMO_MEMBER_SUBJECTS = ""
+
+# --- Production: Supabase registry through Hyperdrive ---------------------------------
+# Deploy with: wrangler deploy --env production
+[env.production]
+name = "plays-ranch-mcp-production"
+workers_dev = false
+# routes = [{ pattern = "mcp.REPLACE_WITH_DOMAIN", custom_domain = true }]
+
+[env.production.vars]
+NODE_ENV = "production"
+SERVICE_VERSION = "0.2.0"
+MCP_RESOURCE_URL = "https://mcp.REPLACE_WITH_DOMAIN/mcp"
+OAUTH_MODE = "jwt"
+OAUTH_ISSUER = "https://REPLACE_WITH_CLERK_PRODUCTION_ISSUER"
+OAUTH_JWKS_URL = "https://REPLACE_WITH_CLERK_PRODUCTION_ISSUER/.well-known/jwks.json"
+OAUTH_REQUIRED_SCOPE = "none"
+REGISTRY_SOURCE = "postgres"
+
+# Create after the Supabase project exists:
+#   wrangler hyperdrive create plays-ranch-registry --connection-string="<read-only role URL>"
+# [[env.production.hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "REPLACE_WITH_HYPERDRIVE_ID"
