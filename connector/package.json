@@ -1,0 +1,32 @@
+{
+  "name": "plays-ranch-mcp-connector",
+  "version": "0.1.0",
+  "description": "Plays Ranch MCP Connector v1 — private, read-only registry tools for ChatGPT custom connectors.",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "start": "node dist/server.js",
+    "dev": "node --import tsx src/server.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "jose": "6.2.15",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "tsx": "^4.20.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.0"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}
