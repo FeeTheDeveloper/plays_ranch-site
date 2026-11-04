@@ -13,3 +13,7 @@ The working mission, audience, product structure, page map, and open decisions a
 ## Release status
 
 This repository contains a local draft. No hosting project, custom domain, public release, or third-party integration has been configured from this repository.
+
+## MCP connector (separate service)
+
+`connector/` contains the Plays Ranch MCP Connector v1: a private, read-only, OAuth-protected MCP server that ChatGPT uses as a custom connector. It is deployed separately from this static site and shares no runtime with it. See [connector/README.md](connector/README.md) and the [v1 handoff](docs/mcp-connector-v1-handoff.md). It has not been deployed.
